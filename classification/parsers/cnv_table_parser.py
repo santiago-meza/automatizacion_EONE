@@ -1,73 +1,138 @@
 from collections import OrderedDict
+import re
 
 
 def clean(value):
-    """Convierte None en '' y elimina saltos de línea."""
+    """
+    Limpieza general de texto extraído del PDF.
+    """
+
     if value is None:
         return ""
 
-    return str(value).replace("\n", " ").strip()
+    value = str(value)
+
+    # unir saltos de línea
+    value = value.replace("\n", " ")
+
+    # eliminar espacios múltiples
+    value = re.sub(r"\s+", " ", value)
+
+    return value.strip()
+
+
+
+def clean_cytoband(value):
+    """
+    Corrige CytoBand partidas por salto de línea.
+    Ej:
+    5p15.33- 15.2 -> 5p15.33-15.2
+    """
+
+    value = clean(value)
+
+    value = value.replace("- ", "-")
+
+    return value
+
+
+
+def clean_inheritance(value):
+    """
+    Normaliza herencia.
+    """
+
+    value = clean(value)
+
+    replacements = {
+        "recessive Autosomal": "Autosomal recessive",
+        "dominant Autosomal": "Autosomal dominant",
+        "Autosomal Autosomal": "Autosomal dominant",
+    }
+
+    return replacements.get(value, value)
+
 
 
 def parse_cnv_tables(tables):
+    """
+    Convierte tablas CNV extraídas del PDF
+    en una estructura organizada por CNV.
+    """
 
     cnvs = OrderedDict()
 
-    last_cytoband = ""
-    last_position = ""
-    last_type = ""
+    current_cytoband = ""
+    current_position = ""
+    current_type = ""
+
 
     for table in tables:
 
         if not table:
             continue
 
-        # Saltar encabezado
-        rows = table[1:]
+
+        # eliminar encabezado repetido
+        if table[0][0] == "CytoBand":
+            rows = table[1:]
+
+        else:
+            rows = table
+
 
         for row in rows:
 
-            # Ignorar filas incompletas
             if len(row) < 7:
                 continue
 
-            cytoband = clean(row[0])
+
+            cytoband = clean_cytoband(row[0])
             position = clean(row[1])
             cnv_type = clean(row[2])
+
             disease = clean(row[3])
-            inheritance = clean(row[4])
+            inheritance = clean_inheritance(row[4])
             gene = clean(row[5])
             reference = clean(row[6])
 
-            # Heredar valores de celdas combinadas
+
+            # mantener valores de celdas combinadas
+
             if cytoband:
-                last_cytoband = cytoband
+                current_cytoband = cytoband
 
             if position:
-                last_position = position
+                current_position = position
 
             if cnv_type:
-                last_type = cnv_type
+                current_type = cnv_type
+
 
             if not disease:
                 continue
 
+
             key = (
-                last_cytoband,
-                last_position,
-                last_type
+                current_cytoband,
+                current_position,
+                current_type
             )
+
 
             if key not in cnvs:
 
                 cnvs[key] = {
-                    "cytoband": last_cytoband,
-                    "position": last_position,
-                    "type": last_type,
-                    "entries": []
+
+                    "cytoband": current_cytoband,
+                    "position": current_position,
+                    "type": current_type,
+                    "associations": []
+
                 }
 
-            cnvs[key]["entries"].append(
+
+            cnvs[key]["associations"].append(
                 {
                     "disease": disease,
                     "inheritance": inheritance,
@@ -75,5 +140,6 @@ def parse_cnv_tables(tables):
                     "reference": reference
                 }
             )
+
 
     return list(cnvs.values())

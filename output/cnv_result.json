@@ -1,0 +1,184 @@
+[
+    {
+        "cytoband": "5p15.33-15.2",
+        "position": "chr5:14782-12771257",
+        "type": "DEL(X1)",
+        "associations": [
+            {
+                "disease": "Neuropathy, hereditary sensory, with",
+                "inheritance": "Autosomal",
+                "gene": "CCT5",
+                "reference": "610150"
+            },
+            {
+                "disease": "spastic paraplegia Mosaic variegated aneuploidy",
+                "inheritance": "Autosomal recessive",
+                "gene": "TRIP13",
+                "reference": "604507"
+            },
+            {
+                "disease": "syndrome 3 Oocyte/zygote/embryo maturation",
+                "inheritance": "Autosomal recessive",
+                "gene": "TRIP13",
+                "reference": "604507"
+            },
+            {
+                "disease": "arrest 9 Intellectual developmental disorder,",
+                "inheritance": "Autosomal recessive",
+                "gene": "NSUN2",
+                "reference": "610916"
+            },
+            {
+                "disease": "autosomal recessive 5 Mitochondrial complex I deficiency,",
+                "inheritance": "Autosomal recessive",
+                "gene": "NDUFS6",
+                "reference": "603848"
+            },
+            {
+                "disease": "nuclear type 9 Diarrhea 8, secretory sodium,",
+                "inheritance": "Autosomal recessive",
+                "gene": "SLC9A3",
+                "reference": "182307"
+            },
+            {
+                "disease": "congenital Hartnup disorder",
+                "inheritance": "Autosomal recessive",
+                "gene": "SLC6A19",
+                "reference": "608893"
+            },
+            {
+                "disease": "Neurodegeneration with ataxia and",
+                "inheritance": "Autosomal recessive",
+                "gene": "SDHA",
+                "reference": "600857"
+            },
+            {
+                "disease": "late-onset optic atrophy Mitochondrial complex II deficiency,",
+                "inheritance": "Autosomal dominant",
+                "gene": "SDHA",
+                "reference": "600857"
+            },
+            {
+                "disease": "Cardiomyopathy, dilated, 1GG",
+                "inheritance": "Autosomal",
+                "gene": "SDHA",
+                "reference": "600857"
+            },
+            {
+                "disease": "Pheochromocytoma/paraganglioma",
+                "inheritance": "Autosomal recessive",
+                "gene": "SDHA",
+                "reference": "600857"
+            },
+            {
+                "disease": "syndrome 5 Epilepsy, familial adult myoclonic, 3",
+                "inheritance": "Autosomal dominant",
+                "gene": "MARCH6",
+                "reference": "613297"
+            },
+            {
+                "disease": "Leukemia, acute myeloid",
+                "inheritance": "dominant Somatic mutation, Autosomal",
+                "gene": "TERT",
+                "reference": "187270"
+            },
+            {
+                "disease": "Dyskeratosis congenita, autosomal dominant 2",
+                "inheritance": "dominant Autosomal recessive,",
+                "gene": "TERT",
+                "reference": "187270"
+            },
+            {
+                "disease": "Dyskeratosis congenita, autosomal recessive 4",
+                "inheritance": "Autosomal Autosomal recessive,",
+                "gene": "TERT",
+                "reference": "187270"
+            },
+            {
+                "disease": "Pulmonary fibrosis and/or bone marrow failure syndrome, telomere-",
+                "inheritance": "Autosomal Autosomal dominant",
+                "gene": "TERT",
+                "reference": "187270"
+            },
+            {
+                "disease": "Melanoma, cutaneous malignant, 9",
+                "inheritance": "Autosomal",
+                "gene": "TERT",
+                "reference": "187270"
+            },
+            {
+                "disease": "Nicotine dependence, protection",
+                "inheritance": "dominant -",
+                "gene": "SLC6A3",
+                "reference": "126455"
+            },
+            {
+                "disease": "against Parkinsonism-dystonia, infantile, 1",
+                "inheritance": "Autosomal",
+                "gene": "SLC6A3",
+                "reference": "126455"
+            },
+            {
+                "disease": "Neural tube defects, folate-sensitive,",
+                "inheritance": "Autosomal recessive",
+                "gene": "MTRR",
+                "reference": "602568"
+            },
+            {
+                "disease": "susceptibility to Homocystinuria-megaloblastic",
+                "inheritance": "Autosomal recessive",
+                "gene": "MTRR",
+                "reference": "602568"
+            }
+        ]
+    },
+    {
+        "cytoband": "16p11.2",
+        "position": "chr16:29595483-30187676",
+        "type": "AMP(X3)",
+        "associations": [
+            {
+                "disease": "anemia, cbl E type Episodic kinesigenic dyskinesia 1",
+                "inheritance": "Autosomal recessive",
+                "gene": "PRRT2",
+                "reference": "614386"
+            },
+            {
+                "disease": "Convulsions, familial infantile, with",
+                "inheritance": "Autosomal dominant",
+                "gene": "PRRT2",
+                "reference": "614386"
+            },
+            {
+                "disease": "paroxysmal choreoathetosis Seizures, benign familial infantile, 2",
+                "inheritance": "Autosomal dominant",
+                "gene": "PRRT2",
+                "reference": "614386"
+            },
+            {
+                "disease": "Cone-rod dystrophy 22",
+                "inheritance": "Autosomal dominant",
+                "gene": "FAM57B",
+                "reference": "615175"
+            },
+            {
+                "disease": "Glycogen storage disease XII",
+                "inheritance": "Autosomal",
+                "gene": "ALDOA",
+                "reference": "103850"
+            },
+            {
+                "disease": "Spondylocostal dysostosis 5",
+                "inheritance": "recessive Autosomal recessive,",
+                "gene": "TBX6",
+                "reference": "602427"
+            },
+            {
+                "disease": "Spondyloepimetaphyseal dysplasia",
+                "inheritance": "Autosomal dominant",
+                "gene": "KIF22",
+                "reference": "603213"
+            }
+        ]
+    }
+]
