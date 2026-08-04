@@ -1,5 +1,5 @@
 from config import INPUT, OUTPUT
-from extractor import extract_text
+from text_extractor import extract_text
 from parser import parse_report
 from classifier import select_template
 from template_engine import generate_report
