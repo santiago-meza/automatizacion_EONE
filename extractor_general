@@ -1,0 +1,31 @@
+from pathlib import Path
+import pdfplumber
+
+
+INPUT = Path("input")
+
+
+def extract_text(pdf_path: Path) -> str:
+
+    extracted_text = []
+
+    with pdfplumber.open(pdf_path) as pdf:
+
+        for page in pdf.pages:
+
+            page_text = page.extract_text()
+
+            if page_text:
+                extracted_text.append(page_text)
+
+    text = "\n".join(extracted_text)
+
+    return text
+
+
+
+pdf = INPUT / "cnv.pdf"
+
+text = extract_text(pdf)
+
+print(text)
