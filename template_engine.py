@@ -16,9 +16,15 @@ def generate_report(template_path: Path, output_path: Path, data: dict):
         "PACIENTE": data.get("PATIENT", ""),
         "PROTOCOLO": data.get("PROTOCOL", ""),
         "FECHA": today,
-        "RESULTADO": data.get("RESULTADO", "")
+        "RESULTADO": data.get("RESULTADO", ""),
+
+        # Preserve placeholder for later table insertion
+        "CNV_TABLE": "{{ CNV_TABLE }}"
     }
 
-    doc.render(context)
+    doc.render(
+        context,
+        autoescape=False
+    )
 
     doc.save(output_path)
