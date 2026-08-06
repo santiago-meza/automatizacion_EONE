@@ -24,7 +24,7 @@ def extract_text(pdf_path: Path) -> str:
 
 
 
-pdf = INPUT / "cnv.pdf"
+pdf = INPUT / "cnv_2.pdf"
 
 text = extract_text(pdf)
 

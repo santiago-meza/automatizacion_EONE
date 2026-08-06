@@ -109,6 +109,31 @@ def parse_report(text: str, tables=None) -> dict:
         if cnvs:
             data["CNVS"] = cnvs
 
+    t = (text or "").lower()
+
+    # 1) RESULTADO_VARIANTES_PATOGENICAS
+    # Strong negative marker
+    if "no pathogenic variant" in t:
+        data["RESULTADO_VARIANTES_PATOGENICAS"] = "No se hallaron Variantes Patogénicas."
+    # Positive header or positive bullet marker
+    elif "pathogenic variant" in t or ", pathogenic" in t:
+        data["RESULTADO_VARIANTES_PATOGENICAS"] = "Se hallaron Variantes Patogénicas."
+    else:
+        # safe default
+        data["RESULTADO_VARIANTES_PATOGENICAS"] = "No se hallaron Variantes Patogénicas."
+
+    # 2) CNV_DETECCION_PHRASE (plural vs singular)
+    cnv_count = len(re.findall(r"\*(deletion|duplication)\s*\(", text, flags=re.IGNORECASE))
+
+    # if you prefer: fall back to parsed CNVS when present
+    if cnv_count == 0 and data.get("CNVS"):
+        cnv_count = len(data["CNVS"])
+
+    data["CNV_DETECCION_PHRASE"] = (
+        "Se detectaron Variantes en el Número de Copias (CNV):"
+        if cnv_count >= 2
+        else "Se detectó una variante en el Número de Copias (CNV):"
+    )
 
 
     return data
