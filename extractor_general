@@ -1,31 +1,23 @@
-from pathlib import Path
 import pdfplumber
+from config import INPUT
 
-
-INPUT = Path("input")
-
-
-def extract_text(pdf_path: Path) -> str:
-
-    extracted_text = []
+def extract_text(pdf_path: str) -> str:
+    """
+    Extrae todo el texto de un PDF dado su ruta.
+    """
+    text = ""
 
     with pdfplumber.open(pdf_path) as pdf:
-
         for page in pdf.pages:
-
             page_text = page.extract_text()
-
             if page_text:
-                extracted_text.append(page_text)
+                text += page_text + "\n"
 
-    text = "\n".join(extracted_text)
-
-    return text
+    return text.replace("\xa0", " ").strip()
 
 
+# 👉 Aquí pones la ruta de tu archivo
+ruta_pdf = INPUT / "ejemplo_1.pdf"
 
-pdf = INPUT / "cnv_2.pdf"
-
-text = extract_text(pdf)
-
-print(text)
+texto = extract_text(ruta_pdf)
+print(texto)

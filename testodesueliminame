@@ -1,0 +1,79 @@
+from classification.parsers.interpretacion_cnv_parser import parse_cnv_interpretations
+
+
+# Pegá aquí el texto crudo tal como lo extrae tu text extractor.
+# (Usando el ejemplo de LOPEZ VINE TATIANA BELEN que ya compartiste)
+
+texto_ejemplo_1 = """
+LOPEZ VINE TATIANA BELEN Female
+D2614301 24-Jun-2026 2009-03-28
+Blood 29-Jun-2026 D2614301
+GENDA Pilar Igarreta 03-Jul-2026
+Pathogenic Variant
+*deletion(X1) of 0.52 MB (chr15:22,759,530-23,279,684) in the 15q11.2 region, Pathogenic
+The deletion is likely to cause pathogenic phenotypes.
+References:
+https://pmc.ncbi.nlm.nih.gov/articles/PMC4346944/
+https://search.clinicalgenome.org/kb/gene-dosage/region/ISCA-37448
+CytoBand Position Type Disease Inheritance Gene Reference
+Spastic paraplegia 6, autosomal Autosomal
+15q11.2 chr15:22759530-23279684 DEL(X1) NIPA1 608145
+dominant dominant
+"""
+
+texto_ejemplo_2 = """
+FERREYRA DIEGO LEONEL Male
+D2673901 08-Jul-2026 2022-12-07
+Blood 13-Jul-2026 D2673901
+GENDA Pilar Igarreta 20-Jul-2026
+Pathogenic Variant
+*duplication(X3) of 0.49 MB (chr2:140,659-638,144) in the 2p25.3 region, Non-Pathogenic
+*deletion(X1) of 0.89 MB (chr16:8,170,128-9,068,911) in the 16p13.2 region, Pathogenic
+This deletion region covers the USP7 morbid gene, which is known to be associated with Hao-Fountain syndrome (HAFOUS).
+References:
+https://pubmed.ncbi.nlm.nih.gov/30679821/
+https://omim.org/entry/616863
+https://www.ncbi.nlm.nih.gov/medgen/1804697
+https://www.orpha.net/en/disease/detail/500055
+CytoBand Position Type Disease Inheritance Gene Reference
+2p25.3 chr2:140659-638144 AMP(X3) - - - -
+Autosomal
+GABA-transaminase deficiency ABAT 137150
+recessive
+Congenital disorder of glycosylation, Autosomal
+16p13.2 chr16:8170128-9068911 DEL(X1) PMM2 601785
+type Ia recessive
+Autosomal
+Hao-Fountain syndrome USP7 602519
+dominant
+"""
+
+
+if __name__ == "__main__":
+
+    print("=" * 60)
+    print("EJEMPLO 1")
+    print("=" * 60)
+
+    resultado_1 = parse_cnv_interpretations(texto_ejemplo_1)
+
+    for variante in resultado_1["variants"]:
+        print(variante)
+
+    print("\nReferencias:")
+    for ref in resultado_1["references"]:
+        print(ref)
+
+
+    print("\n" + "=" * 60)
+    print("EJEMPLO 2")
+    print("=" * 60)
+
+    resultado_2 = parse_cnv_interpretations(texto_ejemplo_2)
+
+    for variante in resultado_2["variants"]:
+        print(variante)
+
+    print("\nReferencias:")
+    for ref in resultado_2["references"]:
+        print(ref)

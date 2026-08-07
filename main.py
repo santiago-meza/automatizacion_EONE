@@ -68,6 +68,57 @@ def main():
             "CNVs encontrados:",
             len(cnvs)
         )
+        def parse_position(position: str):
+            # "chr2:140659-638144"
+            # devuelve ("chr2", 140659, 638144)
+            chrom, rest = position.split(":")
+            start_s, end_s = rest.split("-")
+            return chrom, int(start_s), int(end_s)
+
+        def type_to_variant_type(cnv_type: str):
+            # "AMP(X3)" -> duplication
+            # "DEL(X1)" -> deletion
+            t = (cnv_type or "").upper()
+            if t.startswith("DEL"):
+                return "deletion"
+            if t.startswith("AMP"):
+                return "duplication"
+            # fallback
+            return ""
+
+        def type_to_copy_number(cnv_type: str):
+            # "AMP(X3)" -> "3"
+            import re
+            m = re.search(r"\(X(\d+)\)", cnv_type or "")
+            return m.group(1) if m else ""
+
+        variants = []
+        for cnv in cnvs or []:
+            chromosome, coord_start, coord_end = parse_position(cnv.get("position", ""))
+            variant_type = type_to_variant_type(cnv.get("type", ""))
+            copy_number = type_to_copy_number(cnv.get("type", ""))
+
+            # size_mb aproximado por tamaño en bp
+            size_bp = abs(coord_end - coord_start)
+            size_mb = round(size_bp / 1_000_000, 3)
+
+            variants.append({
+                "variant_type": variant_type,
+                "copy_number": copy_number,
+                "size_mb": size_mb,
+                "chromosome": chromosome,
+                "coord_start": coord_start,
+                "coord_end": coord_end,
+                "region": cnv.get("cytoband", ""),
+                # IMPORTANTE: por ahora no veo "classification" en tu sample.
+                # Si tu parser mete clasificación en algún campo, cámbialo aquí.
+                "classification": "",
+            })
+
+        data["CNV_INTERPRETATIONS_PARSED"] = {"variants": variants}
+
+        print("variants built:", len(variants))
+        print("first built variant:", variants[:1])
 
 
         # =====================================
