@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="93 81 741 741" width="64" height="64">
+  <title>GENDA</title>
+  <defs>
+    <radialGradient id="esfera" cx="0.71" cy="0.71" fx="0.71" fy="0.71" r="0.95">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.35" stop-color="#C9A3BF"/>
+      <stop offset="0.75" stop-color="#83346F"/>
+      <stop offset="1" stop-color="#6C1A5A"/>
+    </radialGradient>
+  </defs>
+  <path d="M 508 170 A 281.5 281.5 0 1 0 743 409"
+        fill="none" stroke="#6C1A5A" stroke-width="138" stroke-linecap="round"/>
+  <circle cx="463.5" cy="451" r="172" fill="url(#esfera)"/>
+</svg>

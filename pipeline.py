@@ -1,5 +1,6 @@
+import re
 import tempfile
-from datetime import datetime
+from contextlib import contextmanager
 from pathlib import Path
 
 from config import TEMPLATES
@@ -19,6 +20,7 @@ from classifier import select_template
 from template_engine import generate_report
 from generators.cnv_table import generate_cnv_table
 from document_merger import insert_table_at_placeholder
+from pdf_exporter import WordConverter
 
 
 CNV_TABLE_TEMPLATE = TEMPLATES / "table_cnv.docx"
@@ -42,6 +44,16 @@ def format_issues(issues):
     return lines
 
 
+def safe_filename(name):
+    """
+    Saca los caracteres que Windows no permite en nombres de archivo.
+    """
+
+    name = re.sub(r'[<>:"/\\|?*]', "", name)
+
+    return re.sub(r"\s+", " ", name).strip()
+
+
 def build_variants(parsed):
     """
     Arma las variantes que usa el template para las viñetas de la
@@ -61,14 +73,20 @@ def build_variants(parsed):
     ]
 
 
-def process_report(pdf, output_dir):
+def process_report(pdf, output_dir, converter=None):
     """
-    Genera el informe en español de un PDF.
+    Genera el informe en español de un PDF, en Word y en PDF.
+
+    Parameters
+    ----------
+    converter : WordConverter, optional
+        Instancia de Word abierta para exportar el PDF. Sin ella solo
+        se genera el Word.
 
     Returns
     -------
     tuple
-        (output_file, issues)
+        (output_file, pdf_file, issues)
     """
 
     pdf = Path(pdf)
@@ -138,12 +156,11 @@ def process_report(pdf, output_dir):
             "No se pudo leer el protocolo o el nombre del paciente."
         )
 
-    today_filename = datetime.now().strftime("%d.%m.%Y")
-
-    output_file = (
-        output_dir /
-        f"{data['PROTOCOL']} {data['PATIENT']} {today_filename}.docx"
+    base_filename = safe_filename(
+        f"{data['PROTOCOL']}, {data['PATIENT']}, Genda"
     )
+
+    output_file = output_dir / f"{base_filename}.docx"
 
     generate_report(
         template,
@@ -173,7 +190,47 @@ def process_report(pdf, output_dir):
                 output_file
             )
 
-    return output_file, issues
+    # =====================================
+    # 7. Export PDF
+    # =====================================
+
+    pdf_file = None
+
+    if converter:
+
+        try:
+            pdf_file = converter.convert(output_file)
+
+        except Exception as error:
+            issues.append(make_issue(
+                "ERROR",
+                f"Se generó el Word pero no el PDF: {error}"
+            ))
+
+    return output_file, pdf_file, issues
+
+
+@contextmanager
+def open_word(log):
+    """
+    Abre Word para exportar los PDFs. Si no se puede, devuelve None y
+    se generan solo los .docx.
+    """
+
+    try:
+        converter = WordConverter()
+        converter.__enter__()
+
+    except Exception as error:
+        log(f"[AVISO] No se pudo abrir Word; solo se generarán los .docx ({error}).")
+        log("")
+        yield None
+        return
+
+    try:
+        yield converter
+    finally:
+        converter.__exit__(None, None, None)
 
 
 def process_folder(input_dir, output_dir, log=print, on_progress=None):
@@ -192,7 +249,7 @@ def process_folder(input_dir, output_dir, log=print, on_progress=None):
     Returns
     -------
     list
-        Un dict por PDF: {"pdf", "output", "issues", "error"}.
+        Un dict por PDF: {"pdf", "output", "pdf_output", "issues", "error"}.
     """
 
     input_dir = Path(input_dir)
@@ -206,6 +263,42 @@ def process_folder(input_dir, output_dir, log=print, on_progress=None):
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Una sola instancia de Word para exportar todos los PDFs
+    with open_word(log) as converter:
+        results = process_pdfs(pdf_files, output_dir, converter, log, on_progress)
+
+    # -----------------------------------------
+    # Resumen
+    # -----------------------------------------
+
+    failed = [r for r in results if r["error"]]
+
+    with_errors = [
+        r for r in results
+        if any(issue["level"] == "ERROR" for issue in r["issues"])
+    ]
+
+    log(f"Informes generados: {len(results) - len(failed)} de {len(results)}")
+
+    if with_errors:
+
+        log("Generados con ERRORES (revisar a mano):")
+
+        for r in with_errors:
+            log(f"  - {r['pdf'].name}")
+
+    if failed:
+
+        log("No generados:")
+
+        for r in failed:
+            log(f"  - {r['pdf'].name}: {r['error']}")
+
+    return results
+
+
+def process_pdfs(pdf_files, output_dir, converter, log, on_progress):
+
     results = []
 
     for index, pdf in enumerate(pdf_files, start=1):
@@ -217,15 +310,21 @@ def process_folder(input_dir, output_dir, log=print, on_progress=None):
         result = {
             "pdf": pdf,
             "output": None,
+            "pdf_output": None,
             "issues": [],
             "error": None
         }
 
         try:
 
-            result["output"], result["issues"] = process_report(
+            (
+                result["output"],
+                result["pdf_output"],
+                result["issues"]
+            ) = process_report(
                 pdf,
-                output_dir
+                output_dir,
+                converter
             )
 
         except PermissionError as error:
@@ -255,38 +354,14 @@ def process_folder(input_dir, output_dir, log=print, on_progress=None):
             log("Generado:")
             log(str(result["output"]))
 
+            if result["pdf_output"]:
+                log(str(result["pdf_output"]))
+
         log("")
 
         results.append(result)
 
         if on_progress:
             on_progress(index, len(pdf_files))
-
-    # -----------------------------------------
-    # Resumen
-    # -----------------------------------------
-
-    failed = [r for r in results if r["error"]]
-
-    with_errors = [
-        r for r in results
-        if any(issue["level"] == "ERROR" for issue in r["issues"])
-    ]
-
-    log(f"Informes generados: {len(results) - len(failed)} de {len(results)}")
-
-    if with_errors:
-
-        log("Generados con ERRORES en la tabla (revisar a mano):")
-
-        for r in with_errors:
-            log(f"  - {r['pdf'].name}")
-
-    if failed:
-
-        log("No generados:")
-
-        for r in failed:
-            log(f"  - {r['pdf'].name}: {r['error']}")
 
     return results

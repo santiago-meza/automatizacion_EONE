@@ -1,10 +1,17 @@
+import sys
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
+# When running as a PyInstaller .exe, use the folder containing the .exe
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys.executable).parent
+else:
+    BASE_DIR = Path(__file__).parent
 
 INPUT = BASE_DIR / "input"
 OUTPUT = BASE_DIR / "output"
 TEMPLATES = BASE_DIR / "templates"
+
+OUTPUT.mkdir(exist_ok=True)
 
 NEGATIVE_TEMPLATE = TEMPLATES / "negativo.docx"
 

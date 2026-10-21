@@ -1,5 +1,5 @@
 """
-Interfaz gráfica para generar los informes en español.
+Interfaz gráfica para generar los informes en español (Word y PDF).
 
 Uso:
     python gui.py
@@ -10,221 +10,448 @@ import os
 import queue
 import threading
 import tkinter as tk
+
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+
+import customtkinter as ctk
 
 from config import INPUT, OUTPUT
-
+from genda_ui import (
+    COLORS,
+    FolderPicker,
+    GendaApp,
+    StatusLog,
+    card,
+    font,
+    primary_button,
+    secondary_button,
+    section_label
+)
 from pipeline import process_folder
 
 
-# Recuerda las últimas carpetas elegidas
-SETTINGS_FILE = Path.home() / ".eone_informes.json"
+# ============================================================
+# Settings
+# ============================================================
+
+def get_settings_file():
+
+    app_data = os.getenv("LOCALAPPDATA")
+
+    if app_data:
+
+        settings_dir = (
+            Path(app_data) /
+            "EONE"
+        )
+
+    else:
+
+        settings_dir = (
+            Path.home() /
+            ".eone"
+        )
+
+    settings_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    return settings_dir / "settings.json"
+
+
+SETTINGS_FILE = get_settings_file()
 
 
 def load_settings():
 
-    try:
-        with open(SETTINGS_FILE, encoding="utf-8") as f:
-            return json.load(f)
+    if not SETTINGS_FILE.exists():
+        return {}
 
-    except (OSError, ValueError):
+    try:
+
+        with open(
+            SETTINGS_FILE,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            return json.load(file)
+
+    except (json.JSONDecodeError, OSError):
+
         return {}
 
 
-def save_settings(settings):
+def save_settings(
+    input_folder,
+    output_folder
+):
+
+    settings = {
+        "input_folder": input_folder,
+        "output_folder": output_folder
+    }
 
     try:
-        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-            json.dump(settings, f, ensure_ascii=False, indent=2)
+
+        with open(
+            SETTINGS_FILE,
+            "w",
+            encoding="utf-8"
+        ) as file:
+
+            json.dump(
+                settings,
+                file,
+                indent=4
+            )
 
     except OSError:
+
         pass
 
 
-class App:
+def log_kind(line):
+    """
+    Color de cada línea del registro según su contenido.
+    """
 
-    def __init__(self, root):
+    if "[ERROR]" in line or line.startswith("NO SE PUDO"):
+        return "error"
 
-        self.root = root
+    if "[AVISO]" in line or line.startswith("REVISAR"):
+        return "warning"
+
+    if "[INFO]" in line:
+        return "info"
+
+    if line.startswith("="):
+        return "muted"
+
+    return None
+
+
+# ============================================================
+# Application
+# ============================================================
+
+class ReportApp(GendaApp):
+
+    def __init__(self):
+
+        super().__init__(
+            "EONE",
+            subtitle="Generación de informes de microarray",
+            size=(820, 780),
+            resizable=True,
+            app_id="GENDA.EONE"
+        )
+
         self.messages = queue.Queue()
+
+        self.input_folder = tk.StringVar(value=str(INPUT))
+        self.output_folder = tk.StringVar(value=str(OUTPUT))
+
+        self.load_saved_folders()
+
+        self.create_widgets()
+
+        self.after(
+            100,
+            self.poll_messages
+        )
+
+    # ========================================================
+    # Settings
+    # ========================================================
+
+    def load_saved_folders(self):
 
         settings = load_settings()
 
-        self.input_dir = tk.StringVar(value=settings.get("input", str(INPUT)))
-        self.output_dir = tk.StringVar(value=settings.get("output", str(OUTPUT)))
-
-        root.title("Informes EONE - Microarray")
-        root.geometry("860x560")
-        root.minsize(640, 400)
-
-        frame = ttk.Frame(root, padding=12)
-        frame.pack(fill="both", expand=True)
-
-        frame.columnconfigure(1, weight=1)
-        frame.rowconfigure(4, weight=1)
-
-        # -----------------------------------------
-        # Carpetas
-        # -----------------------------------------
-
-        ttk.Label(frame, text="Informes originales (PDF):").grid(
-            row=0, column=0, sticky="w", pady=4
-        )
-        ttk.Entry(frame, textvariable=self.input_dir).grid(
-            row=0, column=1, sticky="ew", padx=8
-        )
-        ttk.Button(
-            frame, text="Elegir...",
-            command=lambda: self.choose_folder(self.input_dir)
-        ).grid(row=0, column=2)
-
-        ttk.Label(frame, text="Informes traducidos (salida):").grid(
-            row=1, column=0, sticky="w", pady=4
-        )
-        ttk.Entry(frame, textvariable=self.output_dir).grid(
-            row=1, column=1, sticky="ew", padx=8
-        )
-        ttk.Button(
-            frame, text="Elegir...",
-            command=lambda: self.choose_folder(self.output_dir)
-        ).grid(row=1, column=2)
-
-        # -----------------------------------------
-        # Acciones
-        # -----------------------------------------
-
-        buttons = ttk.Frame(frame)
-        buttons.grid(row=2, column=0, columnspan=3, sticky="w", pady=(10, 6))
-
-        self.run_button = ttk.Button(
-            buttons, text="Generar informes", command=self.run
-        )
-        self.run_button.pack(side="left")
-
-        ttk.Button(
-            buttons, text="Abrir carpeta de salida", command=self.open_output
-        ).pack(side="left", padx=8)
-
-        self.progress = ttk.Progressbar(frame, mode="determinate")
-        self.progress.grid(row=3, column=0, columnspan=3, sticky="ew", pady=4)
-
-        # -----------------------------------------
-        # Registro
-        # -----------------------------------------
-
-        log_frame = ttk.Frame(frame)
-        log_frame.grid(row=4, column=0, columnspan=3, sticky="nsew", pady=(6, 0))
-
-        log_frame.columnconfigure(0, weight=1)
-        log_frame.rowconfigure(0, weight=1)
-
-        self.log_text = tk.Text(
-            log_frame, wrap="word", state="disabled", font=("Consolas", 9)
-        )
-        self.log_text.grid(row=0, column=0, sticky="nsew")
-
-        scrollbar = ttk.Scrollbar(log_frame, command=self.log_text.yview)
-        scrollbar.grid(row=0, column=1, sticky="ns")
-
-        self.log_text.configure(yscrollcommand=scrollbar.set)
-
-        self.log_text.tag_configure("ERROR", foreground="#b00020")
-        self.log_text.tag_configure("AVISO", foreground="#9a6700")
-
-        self.root.after(100, self.poll_messages)
-
-    def choose_folder(self, variable):
-
-        folder = filedialog.askdirectory(
-            initialdir=variable.get() or str(Path.home())
+        input_folder = settings.get(
+            "input_folder",
+            ""
         )
 
-        if folder:
-            variable.set(str(Path(folder)))
+        output_folder = settings.get(
+            "output_folder",
+            ""
+        )
 
-    def open_output(self):
+        if (
+            input_folder and
+            Path(input_folder).is_dir()
+        ):
 
-        folder = Path(self.output_dir.get())
+            self.input_folder.set(
+                input_folder
+            )
 
-        if folder.is_dir():
+        if (
+            output_folder and
+            Path(output_folder).is_dir()
+        ):
+
+            self.output_folder.set(
+                output_folder
+            )
+
+    def save_folders(self):
+
+        save_settings(
+            self.input_folder.get(),
+            self.output_folder.get()
+        )
+
+    # ========================================================
+    # Widgets
+    # ========================================================
+
+    def create_widgets(self):
+
+        # ----------------------------------------------------
+        # Folders
+        # ----------------------------------------------------
+
+        folders = card(self.body)
+
+        folders.pack(
+            fill="x"
+        )
+
+        FolderPicker(
+            folders,
+            "Carpeta de informes PDF",
+            self.input_folder,
+            dialog_title="Seleccionar carpeta de informes PDF",
+            on_change=self.save_folders
+        ).pack(
+            fill="x",
+            padx=20,
+            pady=(16, 12)
+        )
+
+        FolderPicker(
+            folders,
+            "Carpeta de salida",
+            self.output_folder,
+            dialog_title="Seleccionar carpeta de salida",
+            on_change=self.save_folders
+        ).pack(
+            fill="x",
+            padx=20,
+            pady=(0, 18)
+        )
+
+        # ----------------------------------------------------
+        # Generate button
+        # ----------------------------------------------------
+
+        self.generate_button = primary_button(
+            self.body,
+            "Generar informes",
+            self.start_generation,
+            width=240
+        )
+
+        self.generate_button.pack(
+            pady=(20, 14)
+        )
+
+        # ----------------------------------------------------
+        # Progress
+        # ----------------------------------------------------
+
+        self.progress = ctk.CTkProgressBar(
+            self.body,
+            height=10
+        )
+
+        self.progress.pack(
+            fill="x",
+            pady=(0, 6)
+        )
+
+        self.progress.set(0)
+
+        self.progress_label = ctk.CTkLabel(
+            self.body,
+            text="Listo",
+            font=font(12),
+            text_color=COLORS["muted"]
+        )
+
+        self.progress_label.pack(
+            pady=(0, 12)
+        )
+
+        # ----------------------------------------------------
+        # Open output button
+        # (packed before the status box so it always stays
+        # visible at the bottom)
+        # ----------------------------------------------------
+
+        self.open_output_button = secondary_button(
+            self.body,
+            "Abrir carpeta de salida",
+            self.open_output_folder,
+            width=220,
+            state="disabled"
+        )
+
+        self.open_output_button.pack(
+            side="bottom",
+            pady=(16, 0)
+        )
+
+        # ----------------------------------------------------
+        # Status
+        # ----------------------------------------------------
+
+        status = card(self.body)
+
+        status.pack(
+            fill="both",
+            expand=True
+        )
+
+        section_label(
+            status,
+            "Estado"
+        ).pack(
+            anchor="w",
+            padx=20,
+            pady=(14, 4)
+        )
+
+        self.status_box = StatusLog(
+            status
+        )
+
+        self.status_box.pack(
+            fill="both",
+            expand=True,
+            padx=20,
+            pady=(0, 16)
+        )
+
+    # ========================================================
+    # Open output folder
+    # ========================================================
+
+    def open_output_folder(self):
+
+        folder = self.output_folder.get()
+
+        if folder and Path(folder).is_dir():
+
             os.startfile(folder)
-        else:
-            messagebox.showwarning(
-                "Carpeta de salida", "La carpeta de salida todavía no existe."
+
+    # ========================================================
+    # Start generation
+    # ========================================================
+
+    def start_generation(self):
+
+        input_folder = self.input_folder.get().strip()
+        output_folder = self.output_folder.get().strip()
+
+        if not input_folder:
+
+            self.show_status(
+                "Seleccione una carpeta de informes PDF.",
+                "warning"
             )
 
-    def write_log(self, line):
-
-        if "[ERROR]" in line or line.startswith("NO SE PUDO"):
-            tag = "ERROR"
-        elif "[AVISO]" in line:
-            tag = "AVISO"
-        else:
-            tag = ""
-
-        self.log_text.configure(state="normal")
-        self.log_text.insert("end", line + "\n", tag)
-        self.log_text.see("end")
-        self.log_text.configure(state="disabled")
-
-    def run(self):
-
-        input_dir = Path(self.input_dir.get().strip())
-        output_dir = Path(self.output_dir.get().strip())
-
-        if not input_dir.is_dir():
-
-            messagebox.showerror(
-                "Carpeta de informes",
-                "La carpeta de informes originales no existe."
-            )
             return
 
-        if not self.output_dir.get().strip():
+        if not output_folder:
 
-            messagebox.showerror(
-                "Carpeta de salida", "Elegí una carpeta de salida."
+            self.show_status(
+                "Seleccione una carpeta de salida.",
+                "warning"
             )
+
             return
 
-        save_settings({"input": str(input_dir), "output": str(output_dir)})
+        if not Path(input_folder).is_dir():
 
-        self.log_text.configure(state="normal")
-        self.log_text.delete("1.0", "end")
-        self.log_text.configure(state="disabled")
+            self.show_status(
+                "La carpeta de informes PDF no existe.",
+                "error"
+            )
 
-        self.progress["value"] = 0
-        self.run_button.configure(state="disabled")
+            return
 
-        threading.Thread(
-            target=self.worker,
-            args=(input_dir, output_dir),
+        self.save_folders()
+
+        self.status_box.clear()
+
+        self.open_output_button.configure(
+            state="disabled"
+        )
+
+        self.generate_button.configure(
+            state="disabled",
+            text="Generando…"
+        )
+
+        self.progress.set(0)
+
+        self.progress_label.configure(
+            text="Iniciando…"
+        )
+
+        thread = threading.Thread(
+            target=self.generate_reports_thread,
+            args=(
+                input_folder,
+                output_folder
+            ),
             daemon=True
-        ).start()
+        )
 
-    def worker(self, input_dir, output_dir):
-        """
-        Corre en otro hilo: solo se comunica con la ventana por la cola.
-        """
+        thread.start()
+
+    # ========================================================
+    # Report generation
+    # (runs in another thread: it only talks to the window
+    # through the queue)
+    # ========================================================
+
+    def generate_reports_thread(
+        self,
+        input_folder,
+        output_folder
+    ):
 
         try:
 
             results = process_folder(
-                input_dir,
-                output_dir,
-                log=lambda line: self.messages.put(("log", line)),
-                on_progress=lambda done, total: self.messages.put(
-                    ("progress", (done, total))
+                input_folder,
+                output_folder,
+                log=lambda line: self.messages.put(
+                    ("log", line)
+                ),
+                on_progress=lambda current, total: self.messages.put(
+                    ("progress", (current, total))
                 )
             )
 
         except Exception as error:
 
-            self.messages.put(("log", f"NO SE PUDO PROCESAR LA CARPETA: {error}"))
+            self.messages.put((
+                "log",
+                f"NO SE PUDO PROCESAR LA CARPETA: {error}"
+            ))
+
             results = []
 
-        self.messages.put(("done", results))
+        self.messages.put(
+            ("done", results)
+        )
 
     def poll_messages(self):
 
@@ -235,56 +462,192 @@ class App:
                 kind, value = self.messages.get_nowait()
 
                 if kind == "log":
-                    self.write_log(value)
+
+                    self.show_status(
+                        value,
+                        log_kind(value)
+                    )
 
                 elif kind == "progress":
-                    self.progress["maximum"] = value[1]
-                    self.progress["value"] = value[0]
+
+                    self.update_progress(*value)
 
                 elif kind == "done":
-                    self.finish(value)
+
+                    self.generation_finished(value)
 
         except queue.Empty:
+
             pass
 
-        self.root.after(100, self.poll_messages)
-
-    def finish(self, results):
-
-        self.run_button.configure(state="normal")
-
-        if not results:
-            return
-
-        failed = sum(1 for r in results if r["error"])
-
-        with_errors = sum(
-            1 for r in results
-            if any(issue["level"] == "ERROR" for issue in r["issues"])
+        self.after(
+            100,
+            self.poll_messages
         )
 
-        summary = f"Informes generados: {len(results) - failed} de {len(results)}."
+    # ========================================================
+    # Progress
+    # ========================================================
 
-        if with_errors:
-            summary += f"\nCon errores en la tabla para revisar: {with_errors}."
+    def update_progress(
+        self,
+        current,
+        total
+    ):
 
-        if failed:
-            summary += f"\nNo generados: {failed}."
+        self.progress.set(
+            current / total
+        )
 
-        if failed or with_errors:
-            messagebox.showwarning("Proceso terminado", summary)
+        self.progress_label.configure(
+            text=f"Procesado {current} de {total}"
+        )
+
+    # ========================================================
+    # Generation finished
+    # ========================================================
+
+    def generation_finished(
+        self,
+        results
+    ):
+
+        successful = sum(
+            1
+            for result in results
+            if not result["error"]
+        )
+
+        errors = len(results) - successful
+
+        with_errors = sum(
+            1
+            for result in results
+            if any(
+                issue["level"] == "ERROR"
+                for issue in result["issues"]
+            )
+        )
+
+        with_warnings = sum(
+            1
+            for result in results
+            if result["issues"]
+        )
+
+        without_pdf = sum(
+            1
+            for result in results
+            if result["output"] and not result["pdf_output"]
+        )
+
+        self.progress.set(1)
+
+        # ----------------------------------------------------
+        # Summary
+        # ----------------------------------------------------
+
+        self.show_status("")
+        self.show_status(
+            "==============================",
+            "muted"
+        )
+
+        if errors == 0 and with_errors == 0:
+
+            self.show_status(
+                "✓ GENERACIÓN COMPLETA",
+                "success"
+            )
+
         else:
-            messagebox.showinfo("Proceso terminado", summary)
+
+            self.show_status(
+                "⚠ GENERACIÓN COMPLETA CON ERRORES",
+                "error"
+            )
+
+        self.show_status(
+            f"Informes procesados: {len(results)}"
+        )
+
+        self.show_status(
+            f"Generados (Word): {successful}"
+        )
+
+        self.show_status(
+            f"Generados (PDF): {successful - without_pdf}"
+        )
+
+        self.show_status(
+            f"No generados: {errors}"
+        )
+
+        self.show_status(
+            f"Informes con errores para revisar: {with_errors}"
+        )
+
+        self.show_status(
+            f"Informes con advertencias: {with_warnings}"
+        )
+
+        self.show_status(
+            "==============================",
+            "muted"
+        )
+
+        # ----------------------------------------------------
+        # Final state
+        # ----------------------------------------------------
+
+        if errors == 0:
+
+            self.progress_label.configure(
+                text=(
+                    f"Completado — "
+                    f"{successful} informes generados"
+                )
+            )
+
+        else:
+
+            self.progress_label.configure(
+                text=(
+                    f"Completado con errores — "
+                    f"{successful} generados, "
+                    f"{errors} con error"
+                )
+            )
+
+        self.generate_button.configure(
+            state="normal",
+            text="Generar informes"
+        )
+
+        if successful > 0:
+
+            self.open_output_button.configure(
+                state="normal"
+            )
+
+    # ========================================================
+    # Status
+    # ========================================================
+
+    def show_status(self, message, kind=None):
+
+        self.status_box.write(
+            message,
+            kind
+        )
 
 
-def main():
-
-    root = tk.Tk()
-
-    App(root)
-
-    root.mainloop()
-
+# ============================================================
+# Run application
+# ============================================================
 
 if __name__ == "__main__":
-    main()
+
+    app = ReportApp()
+
+    app.mainloop()

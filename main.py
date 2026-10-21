@@ -3,9 +3,9 @@ from config import INPUT, OUTPUT
 from pipeline import process_folder
 
 
-def main():
+def main(input_dir=INPUT, output_dir=OUTPUT):
 
-    process_folder(INPUT, OUTPUT)
+    process_folder(input_dir, output_dir)
 
 
 if __name__ == "__main__":
