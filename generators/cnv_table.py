@@ -6,6 +6,13 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.oxml.ns import qn
 
 
+# Una CNV con más asociaciones que esto no se lista en la tabla:
+# se muestra una sola fila con "Ver informe original"
+MAX_ASSOCIATIONS = 6
+
+TOO_MANY_ASSOCIATIONS_TEXT = "Ver informe original"
+
+
 # =====================================================
 # AUXILIARY FUNCTIONS
 # =====================================================
@@ -51,6 +58,21 @@ def write_cell(cell, text):
                 run_format.remove(highlight)
 
             run._r.insert(0, run_format)
+
+
+def collapse_long_cnvs(cnvs):
+    """
+    Marca los CNVs con más de MAX_ASSOCIATIONS asociaciones: se les
+    quitan las asociaciones (así no se validan ni se traducen) y en la
+    tabla se muestran como una sola fila con "Ver informe original".
+    """
+
+    return [
+        {**cnv, "associations": [], "too_many_associations": True}
+        if len(cnv.get("associations", [])) > MAX_ASSOCIATIONS
+        else cnv
+        for cnv in cnvs
+    ]
 
 
 def center_cell(cell):
@@ -127,6 +149,11 @@ def generate_cnv_table(template_path, cnvs, output_path):
 
         associations = cnv.get("associations", [])
 
+        # Demasiadas enfermedades para la tabla: una sola fila que
+        # remite al informe original
+        if cnv.get("too_many_associations"):
+            associations = [{"disease": TOO_MANY_ASSOCIATIONS_TEXT}]
+
         if not associations:
             continue
 
@@ -150,7 +177,13 @@ def generate_cnv_table(template_path, cnvs, output_path):
 
             # CNV sin enfermedades asociadas: un solo "-" que ocupa
             # Enfermedad, Herencia y Gen
-            if all(value in ("-", "") for value in values):
+            if values[0] == TOO_MANY_ASSOCIATIONS_TEXT:
+
+                write_cell(row.cells[3], TOO_MANY_ASSOCIATIONS_TEXT)
+
+                center_cell(row.cells[3].merge(row.cells[5]))
+
+            elif all(value in ("-", "") for value in values):
 
                 write_cell(row.cells[3], "-")
 

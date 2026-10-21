@@ -18,7 +18,7 @@ from validators.cnv_validator import validate_cnvs
 
 from classifier import select_template
 from template_engine import generate_report
-from generators.cnv_table import generate_cnv_table
+from generators.cnv_table import collapse_long_cnvs, generate_cnv_table
 from document_merger import insert_table_at_placeholder
 from pdf_exporter import WordConverter
 
@@ -109,7 +109,8 @@ def process_report(pdf, output_dir, converter=None):
 
     tables, issues = extract_cnv_tables(pdf)
 
-    cnvs = parse_cnv_tables(tables)
+    # CNVs con demasiadas enfermedades: "Ver informe original"
+    cnvs = collapse_long_cnvs(parse_cnv_tables(tables))
 
     issues = issues + validate_cnvs(cnvs, text)
 

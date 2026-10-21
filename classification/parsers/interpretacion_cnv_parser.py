@@ -24,7 +24,9 @@ CNV_LINE_PATTERN = re.compile(
     r'\*\s*(?P<type>deletion|duplication)\s*\(\s*X\s*(?P<copy>\d+)\s*\)\s+'
     r'of\s+(?P<size>[\d.]+)\s*MB\s+'
     r'\(\s*(?P<chrom>chr\w+)\s*:\s*(?P<start>[\d,]+)\s*-\s*(?P<end>[\d,]+)\s*\)\s+'
-    r'in\s+the\s+(?P<region>[\w.\-]+)\s+region\s*,\s*'
+    # después de "region" puede venir coma o guion: "region, Pathogenic" o
+    # "region-Non Pathogenic"
+    r'in\s+the\s+(?P<region>[\w.\-]+)\s+region\s*[,\-–]\s*'
     r'(?P<classification>[^\n\r]+)',
     re.IGNORECASE
 )

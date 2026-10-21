@@ -28,16 +28,16 @@ def clean(value):
 
 def clean_cytoband(value):
     """
-    Corrige CytoBand partidas por salto de línea.
+    Corrige CytoBand partidas por salto de línea o leídas con
+    espacios (una CytoBand nunca lleva espacios).
     Ej:
     5p15.33- 15.2 -> 5p15.33-15.2
+    4p 1 6 .3-1 6 .2 -> 4p16.3-16.2
     """
 
     value = clean(value)
 
-    value = value.replace("- ", "-")
-
-    return value
+    return re.sub(r"\s+", "", value)
 
 
 
