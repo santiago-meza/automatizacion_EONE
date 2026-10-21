@@ -1,1 +1,3 @@
-pip install docxtpl
+Usar Python 3.10:
+
+pip install -r requirements.txt

@@ -12,6 +12,10 @@ def clean(value):
 
     value = str(value)
 
+    # palabra partida con guion al final de la línea
+    # Ej: "telomere-\nrelated" -> "telomere-related"
+    value = re.sub(r"-\n(?=[a-z])", "-", value)
+
     # unir saltos de línea
     value = value.replace("\n", " ")
 
@@ -40,17 +44,13 @@ def clean_cytoband(value):
 def clean_inheritance(value):
     """
     Normaliza herencia.
+
+    No se adivinan valores: si la celda llega cortada o mezclada
+    (ej: "Autosomal Autosomal") se deja tal cual para que lo
+    detecte validate_cnvs().
     """
 
-    value = clean(value)
-
-    replacements = {
-        "recessive Autosomal": "Autosomal recessive",
-        "dominant Autosomal": "Autosomal dominant",
-        "Autosomal Autosomal": "Autosomal dominant",
-    }
-
-    return replacements.get(value, value)
+    return clean(value)
 
 
 

@@ -3,6 +3,7 @@ from copy import deepcopy
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.oxml.ns import qn
 
 
 # =====================================================
@@ -29,7 +30,27 @@ def write_cell(cell, text):
         for run in paragraph.runs[1:]:
             run.text = ""
     else:
-        paragraph.add_run(str(text))
+        run = paragraph.add_run(str(text))
+
+        # La fila vacía del template no tiene runs: el formato (tamaño de
+        # letra) está en la marca de párrafo y hay que copiarlo al run.
+        paragraph_properties = paragraph._p.pPr
+
+        mark_format = (
+            paragraph_properties.find(qn("w:rPr"))
+            if paragraph_properties is not None
+            else None
+        )
+
+        if mark_format is not None:
+
+            run_format = deepcopy(mark_format)
+
+            # el resaltado del template es solo una marca de edición
+            for highlight in run_format.findall(qn("w:highlight")):
+                run_format.remove(highlight)
+
+            run._r.insert(0, run_format)
 
 
 def center_cell(cell):
@@ -121,9 +142,25 @@ def generate_cnv_table(template_path, cnvs, output_path):
 
             row = table.rows[-1]
 
-            write_cell(row.cells[3], assoc.get("disease", ""))
-            write_cell(row.cells[4], assoc.get("inheritance", ""))
-            write_cell(row.cells[5], assoc.get("gene", ""))
+            values = [
+                assoc.get("disease", ""),
+                assoc.get("inheritance", ""),
+                assoc.get("gene", "")
+            ]
+
+            # CNV sin enfermedades asociadas: un solo "-" que ocupa
+            # Enfermedad, Herencia y Gen
+            if all(value in ("-", "") for value in values):
+
+                write_cell(row.cells[3], "-")
+
+                center_cell(row.cells[3].merge(row.cells[5]))
+
+            else:
+
+                write_cell(row.cells[3], values[0])
+                write_cell(row.cells[4], values[1])
+                write_cell(row.cells[5], values[2])
 
             current_row += 1
 

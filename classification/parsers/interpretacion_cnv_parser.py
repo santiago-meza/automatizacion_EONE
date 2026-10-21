@@ -41,6 +41,20 @@ URL_PATTERN = re.compile(
     r'https?://\S+'
 )
 
+# Referencias sueltas del tipo "OMIM: 617751".
+OMIM_REFERENCE_PATTERN = re.compile(
+    r'^OMIM:\s*\S.*$',
+    re.MULTILINE
+)
+
+# Frase de LOH que puede venir después de las variantes (informes con
+# CNV y LOH). La procesa loh_parser, no es interpretación de un CNV.
+LOH_SENTENCE_PATTERN = re.compile(
+    r'LOH\s*\([^)]*\)\s*(?:was|were)\s+detected\.'
+    r'(?:\s*There\s+is\s+an\s+increased\s+risk.*?LOH\.)?',
+    re.IGNORECASE | re.DOTALL
+)
+
 
 # ----------------------------------------------------
 # Helpers
@@ -146,6 +160,19 @@ def parse_cnv_interpretations(text: str) -> dict:
     main_text, references = _extract_references_block(text)
     result["references"] = references
 
+    # Si no hay referencias, el texto sigue con la tabla de la página
+    # siguiente: se corta ahí para que no entre en la interpretación.
+    main_text = main_text.split("CytoBand Position", 1)[0]
+
+    # Referencias OMIM y frase de LOH: no son parte de la interpretación.
+    result["references"] = (
+        [" ".join(ref.split()) for ref in OMIM_REFERENCE_PATTERN.findall(main_text)]
+        + result["references"]
+    )
+
+    main_text = OMIM_REFERENCE_PATTERN.sub("", main_text)
+    main_text = LOH_SENTENCE_PATTERN.sub("", main_text)
+
     # Encontramos todas las coincidencias de líneas de variante,
     # junto con su posición en el texto, para poder extraer el
     # texto interpretativo entre una variante y la siguiente.
@@ -179,6 +206,8 @@ def parse_cnv_interpretations(text: str) -> dict:
             "variant_type": variant_type,
             "copy_number": copy_number,
             "size_mb": size_mb,
+            # tal cual figura en el informe (ej: "0.50")
+            "size_text": match.group("size"),
             "chromosome": chromosome,
             "coord_start": coord_start,
             "coord_end": coord_end,

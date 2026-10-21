@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+
+# Archivos de bloqueo de Word
+~$*
+
+anthropic_api_key.txt
+
+# Datos de pacientes: nunca se suben
+input/
+output/
+ejemplos/
+templates/EONE microarray*
+testodesueliminame

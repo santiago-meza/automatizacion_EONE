@@ -44,7 +44,10 @@ def parse_report(text: str, tables=None) -> dict:
         )
 
         if match:
-            data["PATIENT"] = match.group(1)
+            # "PEREZ,JUAN CARLOS" -> "PEREZ JUAN CARLOS"
+            data["PATIENT"] = " ".join(
+                match.group(1).replace(",", " ").split()
+            )
             data["SEX"] = match.group(2)
 
 
@@ -129,10 +132,17 @@ def parse_report(text: str, tables=None) -> dict:
     if cnv_count == 0 and data.get("CNVS"):
         cnv_count = len(data["CNVS"])
 
+    # "Se detectaron dos variantes en el número de copias (CNV):"
+    number_words = {
+        2: "dos", 3: "tres", 4: "cuatro", 5: "cinco", 6: "seis",
+        7: "siete", 8: "ocho", 9: "nueve", 10: "diez"
+    }
+
     data["CNV_DETECCION_PHRASE"] = (
-        "Se detectaron Variantes en el Número de Copias (CNV):"
+        f"Se detectaron {number_words.get(cnv_count, cnv_count)} "
+        "variantes en el número de copias (CNV):"
         if cnv_count >= 2
-        else "Se detectó una variante en el Número de Copias (CNV):"
+        else "Se detectó una variante en el número de copias (CNV):"
     )
 
 
