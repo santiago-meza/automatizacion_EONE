@@ -12,3 +12,8 @@ output/
 ejemplos/
 templates/EONE microarray*
 testodesueliminame
+
+# Salida de PyInstaller y paquetes para distribuir
+build/
+dist/
+*.zip

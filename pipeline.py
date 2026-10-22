@@ -8,7 +8,7 @@ from config import TEMPLATES
 from extractors.text_extractor import extract_text
 from extractors.table_extractor import extract_cnv_tables, make_issue
 
-from classification.parsers.report_parser import parse_report
+from classification.parsers.report_parser import parse_report, pathogenic_result_phrase
 from classification.parsers.cnv_table_parser import parse_cnv_tables
 from classification.parsers.cnv_table_translator import translate_cnvs
 from classification.parsers.interpretacion_cnv_parser import parse_cnv_interpretations
@@ -19,7 +19,7 @@ from validators.cnv_validator import validate_cnvs
 from classifier import select_template
 from template_engine import generate_report
 from generators.cnv_table import collapse_long_cnvs, generate_cnv_table
-from document_merger import insert_table_at_placeholder
+from document_merger import insert_table_at_placeholder, keep_sections_together
 from pdf_exporter import WordConverter
 
 
@@ -127,6 +127,10 @@ def process_report(pdf, output_dir, converter=None):
 
     data["CNV_INTERPRETATIONS_PARSED"] = {"variants": build_variants(parsed)}
 
+    data["RESULTADO_VARIANTES_PATOGENICAS"] = pathogenic_result_phrase(
+        variant["classification"] for variant in parsed["variants"]
+    )
+
     data["INTERPRETACION"], interpretation_issues = translate_interpretations(parsed)
 
     issues = issues + interpretation_issues
@@ -190,6 +194,9 @@ def process_report(pdf, output_dir, converter=None):
                 temp_cnv_table,
                 output_file
             )
+
+    # Apartados que no entran en la hoja pasan enteros a la siguiente
+    keep_sections_together(output_file)
 
     # =====================================
     # 7. Export PDF

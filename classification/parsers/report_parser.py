@@ -112,18 +112,10 @@ def parse_report(text: str, tables=None) -> dict:
         if cnvs:
             data["CNVS"] = cnvs
 
-    t = (text or "").lower()
-
     # 1) RESULTADO_VARIANTES_PATOGENICAS
-    # Strong negative marker
-    if "no pathogenic variant" in t:
-        data["RESULTADO_VARIANTES_PATOGENICAS"] = "No se hallaron Variantes Patogénicas."
-    # Positive header or positive bullet marker
-    elif "pathogenic variant" in t or ", pathogenic" in t:
-        data["RESULTADO_VARIANTES_PATOGENICAS"] = "Se hallaron Variantes Patogénicas."
-    else:
-        # safe default
-        data["RESULTADO_VARIANTES_PATOGENICAS"] = "No se hallaron Variantes Patogénicas."
+    # Se completa en el pipeline con las clasificaciones de las variantes
+    # (pathogenic_result_phrase); acá queda el valor por defecto.
+    data["RESULTADO_VARIANTES_PATOGENICAS"] = pathogenic_result_phrase([])
 
     # 2) CNV_DETECCION_PHRASE (plural vs singular)
     cnv_count = len(re.findall(r"\*(deletion|duplication)\s*\(", text, flags=re.IGNORECASE))
@@ -147,3 +139,24 @@ def parse_report(text: str, tables=None) -> dict:
 
 
     return data
+
+
+def pathogenic_result_phrase(classifications) -> str:
+    """
+    Frase del resultado según la clasificación de cada variante:
+
+        ["Non-Pathogenic", "Pathogenic"] -> "Se hallaron Variantes Patogénicas."
+        ["VUS"]                          -> "No se hallaron Variantes Patogénicas."
+
+    No se busca "pathogenic" en el texto del informe: la interpretación de
+    una VUS puede decir "Pathogenic variants ... involving PRODH ...".
+    """
+
+    for classification in classifications:
+
+        c = " ".join((classification or "").lower().replace("-", " ").split())
+
+        if c in ("pathogenic", "likely pathogenic"):
+            return "Se hallaron Variantes Patogénicas."
+
+    return "No se hallaron Variantes Patogénicas."
