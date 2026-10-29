@@ -50,6 +50,21 @@ def parse_report(text: str, tables=None) -> dict:
             )
             data["SEX"] = match.group(2)
 
+    # Formato EDGC:
+    # "Examinee Name ZABALA,JULIA Gender Unknown"
+    if not data["PATIENT"]:
+
+        match = re.search(
+            r"Examinee\s+Name\s+(.+?)\s+Gender\s+(\w+)",
+            text
+        )
+
+        if match:
+            data["PATIENT"] = " ".join(
+                match.group(1).replace(",", " ").split()
+            )
+            data["SEX"] = match.group(2)
+
 
 
     # ----------------------------------------------------
@@ -78,21 +93,35 @@ def parse_report(text: str, tables=None) -> dict:
     if date_match:
         data["DATE"] = date_match.group(1)
 
+    else:
+        # Formato EDGC: "Report Date 2026-Oct-29"
+        date_match = re.search(
+            r"Report\s+Date\s+(\d{4}-[A-Za-z]{3}-\d{2})",
+            text
+        )
+
+        if date_match:
+            data["DATE"] = date_match.group(1)
+
 
 
     # ----------------------------------------------------
     # Resultado negativo
     # ----------------------------------------------------
 
-    if "According to the CMA result" in text:
+    # El cariotipo puede venir cortado en dos líneas:
+    # "arr[GRCh37](X,Y)x1," + "(1-22)x2."
+    flat_text = " ".join(text.split())
 
-        if "arr[GRCh37](X,Y)x1, (1-22)x2" in text:
+    if "According to the CMA result" in flat_text:
+
+        if "arr[GRCh37](X,Y)x1, (1-22)x2" in flat_text:
 
             data["NEGATIVE"] = True
             data["RESULTADO"] = "(arr(X,Y)x1, (1-22)x2)"
 
 
-        elif "arr[GRCh37](X)x2, (1-22)x2" in text:
+        elif "arr[GRCh37](X)x2, (1-22)x2" in flat_text:
 
             data["NEGATIVE"] = True
             data["RESULTADO"] = "(arr(X)x2, (1-22)x2)"
